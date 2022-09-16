@@ -15,11 +15,24 @@ func (r *PostgresRepository) save(s *Book) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer tx.Rollback()
+	defer func(tx *sql.Tx) {
+		err := tx.Rollback()
+		if err != nil {
+			// log some error
+		}
+	}(tx)
 
-	tx.Exec(`INSERT INTO Book(name, price) VALUES ($1, $2)`, s.name, s.price)
+	_, err = tx.Exec(`INSERT INTO Book(name, price) VALUES ($1, $2)`, s.name, s.price)
+	if err != nil {
+		return
+	}
 
-	defer r.DB.Close()
+	defer func(DB *sql.DB) {
+		err := DB.Close()
+		if err != nil {
+			// log some error
+		}
+	}(r.DB)
 }
 
 func (r *PostgresRepository) delete(s *Book) {
@@ -29,9 +42,24 @@ func (r *PostgresRepository) delete(s *Book) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer tx.Rollback()
+	defer func(tx *sql.Tx) {
+		err := tx.Rollback()
+		if err != nil {
+			// log some error
+		}
+	}(tx)
 
-	tx.Exec(`DELETE FROM Book WHERE id = ($1)`, s.id)
+	_, err = tx.Exec(`DELETE FROM Book WHERE id = ($1)`, s.id)
+	if err != nil {
+		return
+	}
+
+	defer func(DB *sql.DB) {
+		err := DB.Close()
+		if err != nil {
+			// log some error
+		}
+	}(r.DB)
 
 	log.Println("DELETE")
 }
@@ -43,9 +71,24 @@ func (r *PostgresRepository) update(s *Book) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer tx.Rollback()
+	defer func(tx *sql.Tx) {
+		err := tx.Rollback()
+		if err != nil {
+			// log some error
+		}
+	}(tx)
 
-	tx.Exec(`UPDATE Book SET name=$1, price=$2 WHERE id = $3`, s.name, s.price, s.id)
+	_, err = tx.Exec(`UPDATE Book SET name=$1, price=$2 WHERE id = $3`, s.name, s.price, s.id)
+	if err != nil {
+		return
+	}
+
+	defer func(DB *sql.DB) {
+		err := DB.Close()
+		if err != nil {
+			// log some error
+		}
+	}(r.DB)
 
 	log.Println("UPDATE: Name: " + s.name + " | Price: " + s.price)
 }

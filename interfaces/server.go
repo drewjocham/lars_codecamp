@@ -66,11 +66,13 @@ func main() {
 		bService: bService,
 	}
 
-	http.HandleFunc("/save", s.saveBook)
-	http.HandleFunc("/update/${id}", s.updateBook)
-	http.HandleFunc("/delete/${id}", s.deleteBook)
+	mux := http.NewServeMux()
 
-	err = http.ListenAndServe(":8090", nil)
+	mux.HandleFunc("/save", s.saveBook)
+	mux.HandleFunc("/update/${id}", s.updateBook)
+	mux.HandleFunc("/delete/${id}", s.deleteBook)
+
+	err = http.ListenAndServe(":8090", mux)
 	if err != nil {
 		return
 	}
