@@ -1,0 +1,20 @@
+version: '2.2'
+
+services:
+  db:
+    image: postgres:10-alpine
+    environment:
+      - POSTGRES_DB=demo
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    restart: "unless-stopped"
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+      - ./localDepend/create-db.sql:/docker-entrypoint-initdb.d/create_db.sqld
+    logging:
+      options:
+        max-size: 10m
+        max-file: "3"
+    ports:
+      - "5432:5432"
+

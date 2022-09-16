@@ -3,64 +3,55 @@ package main
 import (
 	"database/sql"
 	"log"
-	"strconv"
 )
 
-func dbConn() (db *sql.DB) {
-	dbDriver := "mysql"
-	dbUser := "root"
-	dbPass := "root"
-	dbName := "goblog"
-	db, err := sql.Open(dbDriver, dbUser+":"+dbPass+"@/"+dbName)
-	if err != nil {
-		panic(err.Error())
-	}
-	return db
+type PostgresRepository struct {
+	DB *sql.DB
 }
 
-func save(s *Book) {
-	db := dbConn()
-
-	db.Exec("INSERT INTO Book(name, price) VALUES (s.name, s.price)")
-
-	defer db.Close()
-}
-
-func delete(s *Book) {
-	db := dbConn()
-	tx, err := db.Begin()
+func (r *PostgresRepository) save(s *Book) {
+	tx, err := r.DB.Begin()
 
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer tx.Rollback()
 
-	bookId := s.id
-	del, err := db.Prepare("DELETE FROM Book WHERE id = (?)")
+	tx.Exec(`INSERT INTO Book(name, price) VALUES ($1, $2)`, s.name, s.price)
+
+	defer r.DB.Close()
+}
+
+func (r *PostgresRepository) delete(s *Book) {
+
+	tx, err := r.DB.Begin()
 
 	if err != nil {
-		panic(err.Error())
+		log.Fatal(err)
 	}
+	defer tx.Rollback()
 
-	_, err = del.Exec(bookId)
-	if err != nil {
-		return
-	}
+	tx.Exec(`DELETE FROM Book WHERE id = ($1)`, s.id)
+
 	log.Println("DELETE")
 }
 
-func update(s *Book) {
+func (r *PostgresRepository) update(s *Book) {
 
-	db := dbConn()
-	tx, err := db.Begin()
+	tx, err := r.DB.Begin()
 
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer tx.Rollback()
 
-	update, err := db.Prepare("UPDATE Book SET name=?, price=? WHERE id = ?")
+	tx.Exec(`UPDATE Book SET name=$1, price=$2 WHERE id = $3`, s.name, s.price, s.id)
 
-	update.Exec(s.name, s.price)
-	log.Println("UPDATE: Name: " + s.name + " | Price: " + strconv.Itoa(int(s.price)))
+	log.Println("UPDATE: Name: " + s.name + " | Price: " + s.price)
+}
+
+func NewBookRepository(db *sql.DB) *PostgresRepository {
+	return &PostgresRepository{
+		DB: db,
+	}
 }
