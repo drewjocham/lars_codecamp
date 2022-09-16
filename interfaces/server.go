@@ -69,8 +69,8 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/save", s.saveBook)
-	mux.HandleFunc("/update/${id}", s.updateBook)
-	mux.HandleFunc("/delete/${id}", s.deleteBook)
+	mux.HandleFunc("/update/{id}", s.updateBook)
+	mux.HandleFunc("/delete/{id}", s.deleteBook)
 
 	err = http.ListenAndServe(":8090", mux)
 	if err != nil {
