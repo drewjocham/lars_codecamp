@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
+	_ "github.com/lib/pq"
 	"net/http"
 )
 
@@ -13,16 +16,20 @@ type service struct {
 }
 
 func (s *service) saveBook(w http.ResponseWriter, req *http.Request) {
+	ctx := context.Background()
 	name := req.URL.Query().Get("name")
 	price := req.URL.Query().Get("price")
 
+	fmt.Println("name", name)
+	fmt.Println("price", price)
+
 	book := &Book{
-		id:    uuid.New(),
-		name:  name,
-		price: price,
+		Id:    uuid.New(),
+		Name:  name,
+		Price: price,
 	}
 
-	s.bService.SaveBook(book)
+	s.bService.SaveBook(ctx, book)
 }
 
 func (s *service) updateBook(w http.ResponseWriter, req *http.Request) {
@@ -33,7 +40,7 @@ func (s *service) updateBook(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	s.bService.UpdateBook(&b)
-	fmt.Println("Updated book ", b.name)
+	fmt.Println("Updated book ", b.Name)
 }
 
 func (s *service) deleteBook(w http.ResponseWriter, req *http.Request) {
@@ -46,6 +53,27 @@ func (s *service) deleteBook(w http.ResponseWriter, req *http.Request) {
 	s.bService.DeleteBook(&b)
 }
 
+func (s *service) getBook(w http.ResponseWriter, req *http.Request) {
+	fmt.Println("Getting book")
+
+	//ctx := context.Background()
+	vars := mux.Vars(req)
+	id := vars["id"]
+
+	fmt.Println("id", id)
+
+	book := s.bService.GetBook(id)
+
+	w.Header().Set("Content-Type", "application/json")
+
+	err := json.NewEncoder(w).Encode(book)
+	if err != nil {
+		return
+	}
+
+	return
+}
+
 const (
 	DBHost     = "localhost"
 	DBPort     = 5432
@@ -55,9 +83,14 @@ const (
 )
 
 func main() {
+	fmt.Println("Starting server")
 	connString := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
 		DBHost, DBPort, DBUser, DBPassword, DBName)
 	postgresDB, err := sql.Open("postgres", connString)
+	if err != nil {
+		panic(err)
+	}
+	defer postgresDB.Close()
 
 	repo := NewBookRepository(postgresDB)
 
@@ -66,14 +99,17 @@ func main() {
 		bService: bService,
 	}
 
-	mux := http.NewServeMux()
+	router := mux.NewRouter().StrictSlash(true)
 
-	mux.HandleFunc("/save", s.saveBook)
-	mux.HandleFunc("/update/{id}", s.updateBook)
-	mux.HandleFunc("/delete/{id}", s.deleteBook)
+	router.HandleFunc("/save", s.saveBook)
+	router.HandleFunc("/update/{id}", s.updateBook)
+	router.HandleFunc("/delete/{id}", s.deleteBook)
+	router.HandleFunc("/getBook/{id}", s.getBook)
 
-	err = http.ListenAndServe(":8090", mux)
+	err = http.ListenAndServe(":8090", router)
 	if err != nil {
 		return
 	}
+
+	fmt.Println("Server started")
 }
