@@ -2,3 +2,5 @@
 go.mod
 go.sum
 vendor
+postgres-data
+pkg
