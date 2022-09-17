@@ -16,6 +16,9 @@ type service struct {
 	bService *BookService
 }
 
+// example of saving a book with via URL params
+//
+//localhost:8090/save?name=GoLang&price=12
 func (s *service) saveBook(w http.ResponseWriter, req *http.Request) {
 	ctx := context.Background()
 	name := req.URL.Query().Get("name")
@@ -30,6 +33,16 @@ func (s *service) saveBook(w http.ResponseWriter, req *http.Request) {
 	s.bService.SaveBook(ctx, book)
 }
 
+// example of getting the request body as an object
+/*
+curl --location --request POST 'localhost:8090/update' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "Id": "c925e9b4-dc7d-4805-8cfe-459bf9f98708",
+    "Name": "GoLang",
+    "Price": "30"
+}'
+*/
 func (s *service) updateBook(w http.ResponseWriter, req *http.Request) {
 	ctx := context.Background()
 	var b Book
@@ -42,6 +55,8 @@ func (s *service) updateBook(w http.ResponseWriter, req *http.Request) {
 	log.Println("Updated book ", &b)
 }
 
+// example gets ID query param in the ?id="1"
+// localhost:8090/delete?id=80ec1adf-277b-422c-bb51-de6f39f66166
 func (s *service) deleteBook(w http.ResponseWriter, req *http.Request) {
 	id := req.URL.Query().Get("id")
 	log.Println("Deleting book ", id)
@@ -49,6 +64,8 @@ func (s *service) deleteBook(w http.ResponseWriter, req *http.Request) {
 	s.bService.DeleteBook(ctx, id)
 }
 
+// example of getting {id} in the URL getBook/{id}
+// localhost:8090/getBook/"a12a2c02-c226-43da-b500-be014efcb3d3"
 func (s *service) getBook(w http.ResponseWriter, req *http.Request) {
 	log.Println("Getting book")
 
