@@ -10,9 +10,17 @@ mod-vendor: ## Download, verify, and vendor module dependencies
 	go mod tidy
 	go mod vendor
 
-.PHONY: database
-database: ## start postgres DB
+.PHONY: network
+network: ## create network
+	docker create network lars_codecamp_default
+
+.PHONY: database-up
+database-up: ## start postgres DB
 	docker-compose up -d
+
+.PHONY: database-down
+database-down: ## shutdown postgres DB
+	docker-compose down
 
 .PHONY: proto
 proto: ## Generate protobuf code
@@ -25,4 +33,4 @@ proto: ## Generate protobuf code
 
 .PHONY: proto-docker
 proto-docker: ## Generate protobuf code
-	docker run --rm -v $(pwd):/mnt memominsk/protobuf-alpine:latest --go_out=pkg/api  ${CURDIR}/proto/api/book.proto
+	docker run --rm -v $(pwd):/mnt memominsk/protobuf-alpine:latest --go_out=pkg/api  ${PROJ_PATH}/proto/api/book.proto
