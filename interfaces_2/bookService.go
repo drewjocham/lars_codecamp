@@ -11,25 +11,28 @@ type BookService struct {
 }
 
 type Book struct {
-	Id    uuid.UUID `json:"id"`
-	Name  string    `json:"name"`
-	Price string    `json:"price"`
+	Id    uuid.UUID
+	Name  string
+	Price string
 }
 
 func (s *BookService) SaveBook(ctx context.Context, b *Book) {
-	fmt.Println("Saving book with id ", b.Id)
+	fmt.Println("[Service] Saving book with id ", b.Id)
 	s.repo.save(ctx, b)
 }
 
-func (s *BookService) DeleteBook(b *Book) {
-	s.repo.delete(b)
+func (s *BookService) DeleteBook(ctx context.Context, id string) {
+	fmt.Println("[Service] Deleting book with id ", id)
+	s.repo.delete(ctx, id)
 }
 
-func (s *BookService) UpdateBook(b *Book) {
-	s.repo.update(b)
+func (s *BookService) UpdateBook(ctx context.Context, b *Book) {
+	fmt.Println("[Service] Updating book with id ", b.Id)
+	s.repo.update(ctx, b)
 }
 
 func (s *BookService) GetBook(id string) Book {
+	fmt.Println("[Service] Getting book with id ", id)
 	book := s.repo.get(id)
 	return book
 }

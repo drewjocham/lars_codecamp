@@ -31,23 +31,35 @@ func (r *PostgresRepository) save(ctx context.Context, s *Book) {
 
 }
 
-func (r *PostgresRepository) delete(s *Book) {
+func (r *PostgresRepository) delete(ctx context.Context, id string) {
 
-	tx, err := r.DB.Begin()
+	var tx *sql.Tx
 
+	tx, err := r.DB.BeginTx(ctx, nil)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println("Error while deleting book ", id)
 	}
-	defer func(tx *sql.Tx) {
-		err := tx.Rollback()
-		if err != nil {
-			// log some error
-		}
-	}(tx)
 
-	_, err = tx.Exec(`DELETE FROM Book WHERE id = ($1)`, s.Id)
+	defer func() {
+		err = r.commitOrRollback(err, tx)
+	}()
+
+	var dbRes sql.Result
+
+	dbRes, err = tx.Exec(`DELETE FROM book WHERE id = ($1)`, id)
 	if err != nil {
 		return
+	}
+
+	var rows int64
+
+	rows, err = dbRes.RowsAffected()
+	if err != nil {
+		fmt.Println("Error while deleting book row ")
+	}
+
+	if rows != 1 {
+		fmt.Println("Book was not found, unable to delete.")
 	}
 
 	defer func(DB *sql.DB) {
@@ -57,34 +69,25 @@ func (r *PostgresRepository) delete(s *Book) {
 		}
 	}(r.DB)
 
-	log.Println("DELETE")
+	log.Println("Deleted book")
 }
 
-func (r *PostgresRepository) update(s *Book) {
-
-	tx, err := r.DB.Begin()
+func (r *PostgresRepository) update(ctx context.Context, s *Book) {
+	fmt.Println("[Repo] Updating book with id ", s.Id)
+	tx, err := r.DB.BeginTx(ctx, nil)
 
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println("Error in update translation ", err)
 	}
-	defer func(tx *sql.Tx) {
-		err := tx.Rollback()
-		if err != nil {
-			// log some error
-		}
-	}(tx)
 
-	_, err = tx.Exec(`UPDATE Book SET name=$1, price=$2 WHERE id = $3`, s.Name, s.Price, s.Id)
+	defer func() {
+		err = r.commitOrRollback(err, tx)
+	}()
+
+	_, err = tx.Exec(`UPDATE book SET name=$1, price=$2 WHERE id = $3`, s.Name, s.Price, s.Id)
 	if err != nil {
 		return
 	}
-
-	defer func(DB *sql.DB) {
-		err := DB.Close()
-		if err != nil {
-			// log some error
-		}
-	}(r.DB)
 
 	log.Println("UPDATE: Name: " + s.Name + " | Price: " + s.Price)
 }

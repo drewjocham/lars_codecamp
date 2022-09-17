@@ -20,9 +20,6 @@ func (s *service) saveBook(w http.ResponseWriter, req *http.Request) {
 	name := req.URL.Query().Get("name")
 	price := req.URL.Query().Get("price")
 
-	fmt.Println("name", name)
-	fmt.Println("price", price)
-
 	book := &Book{
 		Id:    uuid.New(),
 		Name:  name,
@@ -33,30 +30,27 @@ func (s *service) saveBook(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *service) updateBook(w http.ResponseWriter, req *http.Request) {
+	ctx := context.Background()
 	var b Book
 	err := json.NewDecoder(req.Body).Decode(&b)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	s.bService.UpdateBook(&b)
-	fmt.Println("Updated book ", b.Name)
+	s.bService.UpdateBook(ctx, &b)
+	fmt.Println("Updated book ", &b)
 }
 
 func (s *service) deleteBook(w http.ResponseWriter, req *http.Request) {
-	var b Book
-	err := json.NewDecoder(req.Body).Decode(&b)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	s.bService.DeleteBook(&b)
+	id := req.URL.Query().Get("id")
+	fmt.Println("Deleting book ", id)
+	ctx := context.Background()
+	s.bService.DeleteBook(ctx, id)
 }
 
 func (s *service) getBook(w http.ResponseWriter, req *http.Request) {
 	fmt.Println("Getting book")
 
-	//ctx := context.Background()
 	vars := mux.Vars(req)
 	id := vars["id"]
 
@@ -102,8 +96,8 @@ func main() {
 	router := mux.NewRouter().StrictSlash(true)
 
 	router.HandleFunc("/save", s.saveBook)
-	router.HandleFunc("/update/{id}", s.updateBook)
-	router.HandleFunc("/delete/{id}", s.deleteBook)
+	router.HandleFunc("/update", s.updateBook)
+	router.HandleFunc("/delete", s.deleteBook)
 	router.HandleFunc("/getBook/{id}", s.getBook)
 
 	err = http.ListenAndServe(":8090", router)
