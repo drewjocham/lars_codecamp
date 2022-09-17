@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
+	"log"
 	"net/http"
 )
 
@@ -38,23 +39,23 @@ func (s *service) updateBook(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	s.bService.UpdateBook(ctx, &b)
-	fmt.Println("Updated book ", &b)
+	log.Println("Updated book ", &b)
 }
 
 func (s *service) deleteBook(w http.ResponseWriter, req *http.Request) {
 	id := req.URL.Query().Get("id")
-	fmt.Println("Deleting book ", id)
+	log.Println("Deleting book ", id)
 	ctx := context.Background()
 	s.bService.DeleteBook(ctx, id)
 }
 
 func (s *service) getBook(w http.ResponseWriter, req *http.Request) {
-	fmt.Println("Getting book")
+	log.Println("Getting book")
 
 	vars := mux.Vars(req)
 	id := vars["id"]
 
-	fmt.Println("id", id)
+	log.Println("id", id)
 
 	book := s.bService.GetBook(id)
 
@@ -77,7 +78,7 @@ const (
 )
 
 func main() {
-	fmt.Println("Starting server")
+	log.Println("Starting server")
 	connString := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
 		DBHost, DBPort, DBUser, DBPassword, DBName)
 	postgresDB, err := sql.Open("postgres", connString)
@@ -105,5 +106,5 @@ func main() {
 		return
 	}
 
-	fmt.Println("Server started")
+	log.Println("Server started")
 }
