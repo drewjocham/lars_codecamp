@@ -23,9 +23,9 @@ func (r *PostgresRepository) save(ctx context.Context, s *Book) {
 		err = r.commitOrRollback(err, tx)
 	}()
 
-	_, err = tx.Exec(`INSERT INTO book(id, name, price) VALUES ($1, $2, $3)`, s.Id, s.Name, s.Price)
+	_, err = tx.Exec(`INSERT INTO demo.book(id, name, price) VALUES ($1, $2, $3)`, s.Id, s.Name, s.Price)
 	if err != nil {
-		log.Println("Error when trying to save")
+		log.Println("Error when trying to save ", err)
 		return
 	}
 
@@ -46,7 +46,7 @@ func (r *PostgresRepository) delete(ctx context.Context, id string) {
 
 	var dbRes sql.Result
 
-	dbRes, err = tx.Exec(`DELETE FROM book WHERE id = ($1)`, id)
+	dbRes, err = tx.Exec(`DELETE FROM demo.book WHERE id = ($1)`, id)
 	if err != nil {
 		return
 	}
@@ -61,13 +61,6 @@ func (r *PostgresRepository) delete(ctx context.Context, id string) {
 	if rows != 1 {
 		log.Println("Book was not found, unable to delete.")
 	}
-
-	defer func(DB *sql.DB) {
-		err := DB.Close()
-		if err != nil {
-			// log some error
-		}
-	}(r.DB)
 
 	log.Println("Deleted book")
 }
@@ -84,7 +77,7 @@ func (r *PostgresRepository) update(ctx context.Context, s *Book) {
 		err = r.commitOrRollback(err, tx)
 	}()
 
-	_, err = tx.Exec(`UPDATE book SET name=$1, price=$2 WHERE id = $3`, s.Name, s.Price, s.Id)
+	_, err = tx.Exec(`UPDATE demo.book SET name=$1, price=$2 WHERE id = $3`, s.Name, s.Price, s.Id)
 	if err != nil {
 		return
 	}
@@ -94,7 +87,7 @@ func (r *PostgresRepository) update(ctx context.Context, s *Book) {
 
 func (r *PostgresRepository) get(id string) Book {
 	log.Println("Getting book in repo")
-	query := fmt.Sprintf(`SELECT * FROM book WHERE id = %v`, id)
+	query := fmt.Sprintf(`SELECT * FROM demo.book WHERE id = %v`, id)
 
 	row := r.DB.QueryRow(query, id)
 	book := Book{}
