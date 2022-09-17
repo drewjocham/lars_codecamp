@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+import "google/protobuf/any.proto";
+
+service BookService {
+  rpc GetBooks(GetBooksRequest) returns (stream GetBooksRequest){}
+  rpc GetBookByBookId(GetBookByIdRequest) returns (GetBookByIdResponse){}
+}
+
+message GetBooksRequest {
+
+}
+
+message GetBooksResponse {
+
+}
+
+message GetBookByIdRequest {
+  string id = 1;
+}
+
+message GetBookByIdResponse {
+
+}

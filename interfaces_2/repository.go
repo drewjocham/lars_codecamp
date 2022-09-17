@@ -23,82 +23,78 @@ func (r *PostgresRepository) save(ctx context.Context, s *Book) {
 		err = r.commitOrRollback(err, tx)
 	}()
 
-	_, err = tx.Exec(`INSERT INTO book(id, name, price) VALUES ($1, $2, $3)`, s.Id, s.Name, s.Price)
+	_, err = tx.Exec(`INSERT INTO demo.book(id, name, price) VALUES ($1, $2, $3)`, s.Id, s.Name, s.Price)
 	if err != nil {
-		fmt.Println("Error when trying to save")
+		log.Println("Error when trying to save ", err)
 		return
 	}
 
 }
 
-func (r *PostgresRepository) delete(s *Book) {
+func (r *PostgresRepository) delete(ctx context.Context, id string) {
 
-	tx, err := r.DB.Begin()
+	var tx *sql.Tx
 
+	tx, err := r.DB.BeginTx(ctx, nil)
 	if err != nil {
-		log.Fatal(err)
+		log.Println("Error while deleting book ", id)
 	}
-	defer func(tx *sql.Tx) {
-		err := tx.Rollback()
-		if err != nil {
-			// log some error
-		}
-	}(tx)
 
-	_, err = tx.Exec(`DELETE FROM Book WHERE id = ($1)`, s.Id)
+	defer func() {
+		err = r.commitOrRollback(err, tx)
+	}()
+
+	var dbRes sql.Result
+
+	dbRes, err = tx.Exec(`DELETE FROM demo.book WHERE id = ($1)`, id)
 	if err != nil {
 		return
 	}
 
-	defer func(DB *sql.DB) {
-		err := DB.Close()
-		if err != nil {
-			// log some error
-		}
-	}(r.DB)
+	var rows int64
 
-	log.Println("DELETE")
+	rows, err = dbRes.RowsAffected()
+	if err != nil {
+		log.Println("Error while deleting book row ")
+	}
+
+	if rows != 1 {
+		log.Println("Book was not found, unable to delete.")
+	}
+
+	log.Println("Deleted book")
 }
 
-func (r *PostgresRepository) update(s *Book) {
-
-	tx, err := r.DB.Begin()
+func (r *PostgresRepository) update(ctx context.Context, s *Book) {
+	log.Println("[Repo] Updating book with id ", s.Id)
+	tx, err := r.DB.BeginTx(ctx, nil)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Println("Error in update translation ", err)
 	}
-	defer func(tx *sql.Tx) {
-		err := tx.Rollback()
-		if err != nil {
-			// log some error
-		}
-	}(tx)
 
-	_, err = tx.Exec(`UPDATE Book SET name=$1, price=$2 WHERE id = $3`, s.Name, s.Price, s.Id)
+	defer func() {
+		err = r.commitOrRollback(err, tx)
+	}()
+
+	_, err = tx.Exec(`UPDATE demo.book SET name=$1, price=$2 WHERE id = $3`, s.Name, s.Price, s.Id)
 	if err != nil {
 		return
 	}
-
-	defer func(DB *sql.DB) {
-		err := DB.Close()
-		if err != nil {
-			// log some error
-		}
-	}(r.DB)
 
 	log.Println("UPDATE: Name: " + s.Name + " | Price: " + s.Price)
 }
 
 func (r *PostgresRepository) get(id string) Book {
-	fmt.Println("Getting book in repo")
-	query := fmt.Sprintf(`SELECT * FROM book WHERE id = %v`, id)
+	log.Println("Getting book in repo")
+	query := fmt.Sprintf(`SELECT * FROM demo.book WHERE id = %v`, id)
 
 	row := r.DB.QueryRow(query, id)
 	book := Book{}
 	err := row.Scan(&book.Id, &book.Name, &book.Price)
 
 	if err != nil {
-		fmt.Println("Error while getting row")
+		log.Println("Error while getting row")
 		return book
 	}
 

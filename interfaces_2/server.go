@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
+	"log"
 	"net/http"
 )
 
@@ -15,13 +16,13 @@ type service struct {
 	bService *BookService
 }
 
+// example of saving a book with via URL params
+//
+//localhost:8090/save?name=GoLang&price=12
 func (s *service) saveBook(w http.ResponseWriter, req *http.Request) {
 	ctx := context.Background()
 	name := req.URL.Query().Get("name")
 	price := req.URL.Query().Get("price")
-
-	fmt.Println("name", name)
-	fmt.Println("price", price)
 
 	book := &Book{
 		Id:    uuid.New(),
@@ -32,35 +33,46 @@ func (s *service) saveBook(w http.ResponseWriter, req *http.Request) {
 	s.bService.SaveBook(ctx, book)
 }
 
+// example of getting the request body as an object
+/*
+curl --location --request POST 'localhost:8090/update' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "Id": "c925e9b4-dc7d-4805-8cfe-459bf9f98708",
+    "Name": "GoLang",
+    "Price": "30"
+}'
+*/
 func (s *service) updateBook(w http.ResponseWriter, req *http.Request) {
+	ctx := context.Background()
 	var b Book
 	err := json.NewDecoder(req.Body).Decode(&b)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	s.bService.UpdateBook(&b)
-	fmt.Println("Updated book ", b.Name)
+	s.bService.UpdateBook(ctx, &b)
+	log.Println("Updated book ", &b)
 }
 
+// example gets ID query param in the ?id="1"
+// localhost:8090/delete?id=80ec1adf-277b-422c-bb51-de6f39f66166
 func (s *service) deleteBook(w http.ResponseWriter, req *http.Request) {
-	var b Book
-	err := json.NewDecoder(req.Body).Decode(&b)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	s.bService.DeleteBook(&b)
+	id := req.URL.Query().Get("id")
+	log.Println("Deleting book ", id)
+	ctx := context.Background()
+	s.bService.DeleteBook(ctx, id)
 }
 
+// example of getting {id} in the URL getBook/{id}
+// localhost:8090/getBook/"a12a2c02-c226-43da-b500-be014efcb3d3"
 func (s *service) getBook(w http.ResponseWriter, req *http.Request) {
-	fmt.Println("Getting book")
+	log.Println("Getting book")
 
-	//ctx := context.Background()
 	vars := mux.Vars(req)
 	id := vars["id"]
 
-	fmt.Println("id", id)
+	log.Println("id", id)
 
 	book := s.bService.GetBook(id)
 
@@ -83,7 +95,7 @@ const (
 )
 
 func main() {
-	fmt.Println("Starting server")
+	log.Println("Starting server")
 	connString := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
 		DBHost, DBPort, DBUser, DBPassword, DBName)
 	postgresDB, err := sql.Open("postgres", connString)
@@ -102,8 +114,8 @@ func main() {
 	router := mux.NewRouter().StrictSlash(true)
 
 	router.HandleFunc("/save", s.saveBook)
-	router.HandleFunc("/update/{id}", s.updateBook)
-	router.HandleFunc("/delete/{id}", s.deleteBook)
+	router.HandleFunc("/update", s.updateBook)
+	router.HandleFunc("/delete", s.deleteBook)
 	router.HandleFunc("/getBook/{id}", s.getBook)
 
 	err = http.ListenAndServe(":8090", router)
@@ -111,5 +123,5 @@ func main() {
 		return
 	}
 
-	fmt.Println("Server started")
+	log.Println("Server started")
 }
