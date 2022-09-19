@@ -104,6 +104,28 @@ func (r *PostgresRepository) get(id string) Book {
 
 }
 
+func (r *PostgresRepository) getAllBooks(ctx context.Context) ([]Book, error) {
+	log.Println("Getting book in repo")
+	//var res string
+	query := `SELECT * FROM demo.book`
+
+	book := Book{}
+	var books []Book
+	rows, err := r.DB.Query(query)
+	if err != nil {
+		fmt.Println("There was an error while querying getAllBooks")
+	}
+	for rows.Next() {
+		err := rows.Scan(&book.Id, &book.Name, &book.Price)
+		if err != nil {
+			return nil, err
+		}
+		books = append(books, book)
+	}
+
+	return books, nil
+}
+
 func NewBookRepository(db *sql.DB) *PostgresRepository {
 	return &PostgresRepository{
 		DB: db,

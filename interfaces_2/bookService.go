@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/google/uuid"
 	"log"
 )
@@ -35,6 +36,15 @@ func (s *BookService) GetBook(id string) Book {
 	log.Println("[Service] Getting book with id ", id)
 	book := s.repo.get(id)
 	return book
+}
+
+func (s *BookService) GetAllBooks(ctx context.Context) ([]Book, error) {
+	log.Println("[Service] Getting books")
+	books, err := s.repo.getAllBooks(ctx)
+	if err != nil {
+		fmt.Println("[service] error while getting all books", err)
+	}
+	return books, nil
 }
 
 func NewBookService(repo *PostgresRepository) *BookService {

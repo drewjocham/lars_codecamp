@@ -86,6 +86,18 @@ func (s *service) getBook(w http.ResponseWriter, req *http.Request) {
 	return
 }
 
+func (s *service) getAllBooks(w http.ResponseWriter, req *http.Request) {
+	ctx := context.Background()
+	books, err := s.bService.GetAllBooks(ctx)
+
+	if err != nil {
+		fmt.Println("[server] error while getting all books")
+	}
+
+	fmt.Println(books)
+	json.NewEncoder(w).Encode(books)
+}
+
 const (
 	DBHost     = "localhost"
 	DBPort     = 5432
@@ -117,6 +129,7 @@ func main() {
 	router.HandleFunc("/update", s.updateBook)
 	router.HandleFunc("/delete", s.deleteBook)
 	router.HandleFunc("/getBook/{id}", s.getBook)
+	router.HandleFunc("/getAllBooks", s.getAllBooks)
 
 	err = http.ListenAndServe(":8090", router)
 	if err != nil {
