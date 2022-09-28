@@ -3,15 +3,20 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
+)
+
+var (
+	ErrBookNotFound = errors.New("book does not exist")
 )
 
 type PostgresRepository struct {
 	DB *sql.DB
 }
 
-func (r *PostgresRepository) save(ctx context.Context, s *Book) {
+func (r *PostgresRepository) save(ctx context.Context, s *Book) error {
 	var tx *sql.Tx
 
 	tx, err := r.DB.BeginTx(ctx, nil)
@@ -26,9 +31,10 @@ func (r *PostgresRepository) save(ctx context.Context, s *Book) {
 	_, err = tx.Exec(`INSERT INTO demo.book(id, name, price) VALUES ($1, $2, $3)`, s.Id, s.Name, s.Price)
 	if err != nil {
 		log.Println("Error when trying to save ", err)
-		return
+		return ErrBookNotFound
 	}
 
+	return nil
 }
 
 func (r *PostgresRepository) delete(ctx context.Context, id string) {
@@ -65,7 +71,7 @@ func (r *PostgresRepository) delete(ctx context.Context, id string) {
 	log.Println("Deleted book")
 }
 
-func (r *PostgresRepository) update(ctx context.Context, s *Book) {
+func (r *PostgresRepository) update(ctx context.Context, s *Book) (Book, error) {
 	log.Println("[Repo] Updating book with id ", s.Id)
 	tx, err := r.DB.BeginTx(ctx, nil)
 
@@ -77,34 +83,43 @@ func (r *PostgresRepository) update(ctx context.Context, s *Book) {
 		err = r.commitOrRollback(err, tx)
 	}()
 
+	book := Book{}
+
 	_, err = tx.Exec(`UPDATE demo.book SET name=$1, price=$2 WHERE id = $3`, s.Name, s.Price, s.Id)
 	if err != nil {
-		return
+		return book, err
+	}
+
+	row := r.DB.QueryRow(`SELECT * FROM demo.book WHERE id = $1`, s.Id)
+	err = row.Scan(&book.Id, &book.Name, &book.Price)
+
+	if err != nil {
+		log.Println("Error while getting row", err)
+		return book, err
 	}
 
 	log.Println("UPDATE: Name: " + s.Name + " | Price: " + s.Price)
+
+	return book, nil
 }
 
-func (r *PostgresRepository) get(id string) Book {
-	log.Println("Getting book in repo")
-	query := fmt.Sprintf(`SELECT * FROM demo.book WHERE id = %v`, id)
+func (r *PostgresRepository) get(id string) (Book, error) {
+	log.Println("Getting book in repo", id)
 
-	row := r.DB.QueryRow(query, id)
+	row := r.DB.QueryRow(`SELECT * FROM demo.book WHERE id = $1`, id)
 	book := Book{}
 	err := row.Scan(&book.Id, &book.Name, &book.Price)
 
 	if err != nil {
-		log.Println("Error while getting row")
-		return book
+		log.Println("Error while getting row", err)
+		return book, nil
 	}
 
-	log.Println("Select done")
-
-	return book
+	return book, ErrBookNotFound
 
 }
 
-func (r *PostgresRepository) getAllBooks(ctx context.Context) ([]Book, error) {
+func (r *PostgresRepository) getAllBooks() ([]Book, error) {
 	log.Println("Getting book in repo")
 	//var res string
 	query := `SELECT * FROM demo.book`

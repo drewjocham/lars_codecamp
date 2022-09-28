@@ -31,6 +31,7 @@ func (s *service) saveBook(w http.ResponseWriter, req *http.Request) {
 	}
 
 	s.bService.SaveBook(ctx, book)
+	json.NewEncoder(w).Encode(book)
 }
 
 // example of getting the request body as an object
@@ -52,6 +53,7 @@ func (s *service) updateBook(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	s.bService.UpdateBook(ctx, &b)
+	json.NewEncoder(w).Encode(b)
 	log.Println("Updated book ", &b)
 }
 
@@ -64,13 +66,11 @@ func (s *service) deleteBook(w http.ResponseWriter, req *http.Request) {
 	s.bService.DeleteBook(ctx, id)
 }
 
-// example of getting {id} in the URL getBook/{id}
-// localhost:8090/getBook/"a12a2c02-c226-43da-b500-be014efcb3d3"
+// localhost:8090/getBook?id=80ec1adf-277b-422c-bb51-de6f39f66166
 func (s *service) getBook(w http.ResponseWriter, req *http.Request) {
 	log.Println("Getting book")
 
-	vars := mux.Vars(req)
-	id := vars["id"]
+	id := req.URL.Query().Get("id")
 
 	log.Println("id", id)
 
@@ -83,12 +83,11 @@ func (s *service) getBook(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	return
+	json.NewEncoder(w).Encode(book)
 }
 
 func (s *service) getAllBooks(w http.ResponseWriter, req *http.Request) {
-	ctx := context.Background()
-	books, err := s.bService.GetAllBooks(ctx)
+	books, err := s.bService.GetAllBooks()
 
 	if err != nil {
 		fmt.Println("[server] error while getting all books")
@@ -128,7 +127,7 @@ func main() {
 	router.HandleFunc("/save", s.saveBook)
 	router.HandleFunc("/update", s.updateBook)
 	router.HandleFunc("/delete", s.deleteBook)
-	router.HandleFunc("/getBook/{id}", s.getBook)
+	router.HandleFunc("/getBook", s.getBook)
 	router.HandleFunc("/getAllBooks", s.getAllBooks)
 
 	err = http.ListenAndServe(":8090", router)
