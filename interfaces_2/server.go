@@ -8,12 +8,15 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
+	"golang.org/x/sync/errgroup"
 	"log"
 	"net/http"
+	"time"
 )
 
 type service struct {
 	bService *BookService
+	cache    *BookCache
 }
 
 // example of saving a book with via URL params
@@ -74,8 +77,13 @@ func (s *service) getBook(w http.ResponseWriter, req *http.Request) {
 
 	log.Println("id", id)
 
-	book := s.bService.GetBook(id)
-
+	//book := s.bService.GetBook(id)
+	// Now lets use the cache
+	book, ok := s.cache.GetBookById(id)
+	if !ok {
+		log.Println("Was not able to get book from cache")
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 
 	err := json.NewEncoder(w).Encode(book)
@@ -87,11 +95,13 @@ func (s *service) getBook(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *service) getAllBooks(w http.ResponseWriter, req *http.Request) {
-	books, err := s.bService.GetAllBooks()
 
-	if err != nil {
-		fmt.Println("[server] error while getting all books")
-	}
+	//books, err := s.bService.GetAllBooks()
+	books := s.cache.GetAllBooks()
+
+	//if err != nil {
+	//	fmt.Println("[server] error while getting all books")
+	//}
 
 	fmt.Println(books)
 	json.NewEncoder(w).Encode(books)
@@ -116,11 +126,30 @@ func main() {
 	defer postgresDB.Close()
 
 	repo := NewBookRepository(postgresDB)
+	bookCache := NewBookCache(repo)
 
 	bService := NewBookService(repo)
 	s := service{
 		bService: bService,
+		cache:    bookCache,
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	g, egCtx := errgroup.WithContext(ctx)
+
+	t := time.Now()
+	err = s.cache.Init(5, time.Duration(t.Second()+15))
+	if err != nil {
+		log.Println("error while loading cache", err)
+	}
+
+	g.Go(func() error {
+		log.Println("starting campaign cache refresh")
+
+		return s.cache.StartRefresh(egCtx)
+	})
 
 	router := mux.NewRouter().StrictSlash(true)
 

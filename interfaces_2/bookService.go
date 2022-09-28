@@ -8,7 +8,8 @@ import (
 )
 
 type BookService struct {
-	repo *PostgresRepository
+	repo  *PostgresRepository
+	cache *BookCache
 }
 
 type Book struct {
