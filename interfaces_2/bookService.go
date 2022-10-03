@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/google/uuid"
 	"log"
 )
 
 type BookService struct {
-	repo *PostgresRepository
+	repo  *PostgresRepository
+	cache *BookCache
 }
 
 type Book struct {
@@ -18,7 +20,10 @@ type Book struct {
 
 func (s *BookService) SaveBook(ctx context.Context, b *Book) {
 	log.Println("[Service] Saving book with id ", b.Id)
-	s.repo.save(ctx, b)
+	err := s.repo.save(ctx, b)
+	if err != nil {
+		log.Println("[Service] Error while saving book", err)
+	}
 }
 
 func (s *BookService) DeleteBook(ctx context.Context, id string) {
@@ -26,15 +31,32 @@ func (s *BookService) DeleteBook(ctx context.Context, id string) {
 	s.repo.delete(ctx, id)
 }
 
-func (s *BookService) UpdateBook(ctx context.Context, b *Book) {
+func (s *BookService) UpdateBook(ctx context.Context, b *Book) Book {
 	log.Println("[Service] Updating book with id ", b.Id)
-	s.repo.update(ctx, b)
+	book, err := s.repo.update(ctx, b)
+	if err != nil {
+		log.Println("[Service] Error while getting book", err)
+	}
+	return book
 }
 
 func (s *BookService) GetBook(id string) Book {
 	log.Println("[Service] Getting book with id ", id)
-	book := s.repo.get(id)
+	book, err := s.repo.get(id)
+	if err != nil {
+		return book
+	}
+	log.Println("[Service] Error while getting book", err)
 	return book
+}
+
+func (s *BookService) GetAllBooks() ([]Book, error) {
+	log.Println("[Service] Getting books")
+	books, err := s.repo.getAllBooks()
+	if err != nil {
+		fmt.Println("[service] error while getting all books", err)
+	}
+	return books, nil
 }
 
 func NewBookService(repo *PostgresRepository) *BookService {

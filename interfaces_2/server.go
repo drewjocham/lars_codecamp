@@ -8,12 +8,15 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
+	"golang.org/x/sync/errgroup"
 	"log"
 	"net/http"
+	"time"
 )
 
 type service struct {
 	bService *BookService
+	cache    *BookCache
 }
 
 // example of saving a book with via URL params
@@ -31,6 +34,7 @@ func (s *service) saveBook(w http.ResponseWriter, req *http.Request) {
 	}
 
 	s.bService.SaveBook(ctx, book)
+	json.NewEncoder(w).Encode(book)
 }
 
 // example of getting the request body as an object
@@ -52,6 +56,7 @@ func (s *service) updateBook(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	s.bService.UpdateBook(ctx, &b)
+	json.NewEncoder(w).Encode(b)
 	log.Println("Updated book ", &b)
 }
 
@@ -64,18 +69,21 @@ func (s *service) deleteBook(w http.ResponseWriter, req *http.Request) {
 	s.bService.DeleteBook(ctx, id)
 }
 
-// example of getting {id} in the URL getBook/{id}
-// localhost:8090/getBook/"a12a2c02-c226-43da-b500-be014efcb3d3"
+// localhost:8090/getBook?id=80ec1adf-277b-422c-bb51-de6f39f66166
 func (s *service) getBook(w http.ResponseWriter, req *http.Request) {
 	log.Println("Getting book")
 
-	vars := mux.Vars(req)
-	id := vars["id"]
+	id := req.URL.Query().Get("id")
 
 	log.Println("id", id)
 
-	book := s.bService.GetBook(id)
-
+	//book := s.bService.GetBook(id)
+	// Now lets use the cache
+	book, ok := s.cache.GetBookById(id)
+	if !ok {
+		log.Println("Was not able to get book from cache")
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 
 	err := json.NewEncoder(w).Encode(book)
@@ -83,7 +91,20 @@ func (s *service) getBook(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	return
+	json.NewEncoder(w).Encode(book)
+}
+
+func (s *service) getAllBooks(w http.ResponseWriter, req *http.Request) {
+
+	//books, err := s.bService.GetAllBooks()
+	books := s.cache.GetAllBooks()
+
+	//if err != nil {
+	//	fmt.Println("[server] error while getting all books")
+	//}
+
+	fmt.Println(books)
+	json.NewEncoder(w).Encode(books)
 }
 
 const (
@@ -105,18 +126,38 @@ func main() {
 	defer postgresDB.Close()
 
 	repo := NewBookRepository(postgresDB)
+	bookCache := NewBookCache(repo)
 
 	bService := NewBookService(repo)
 	s := service{
 		bService: bService,
+		cache:    bookCache,
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	g, egCtx := errgroup.WithContext(ctx)
+
+	t := time.Now()
+	err = s.cache.Init(5, time.Duration(t.Second()+15))
+	if err != nil {
+		log.Println("error while loading cache", err)
+	}
+
+	g.Go(func() error {
+		log.Println("starting campaign cache refresh")
+
+		return s.cache.StartRefresh(egCtx)
+	})
 
 	router := mux.NewRouter().StrictSlash(true)
 
 	router.HandleFunc("/save", s.saveBook)
 	router.HandleFunc("/update", s.updateBook)
 	router.HandleFunc("/delete", s.deleteBook)
-	router.HandleFunc("/getBook/{id}", s.getBook)
+	router.HandleFunc("/getBook", s.getBook)
+	router.HandleFunc("/getAllBooks", s.getAllBooks)
 
 	err = http.ListenAndServe(":8090", router)
 	if err != nil {
